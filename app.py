@@ -24,7 +24,7 @@ from trailer_config import (
 from visualization import rakodasi_svg, szin
 
 st.set_page_config(
-    page_title="Fuvar- és rakománykalkulátor",
+    page_title="FuvarDíj 4.0 – fejlesztési változat",
     page_icon="🚚",
     layout="wide",
     initial_sidebar_state="auto",
@@ -60,7 +60,7 @@ ARAZAS_ARRES = "Árrés (eladási árra vetítve)"
 
 CSOPORT_ALAP = {
     "nev": "Rakomány",
-    "mod": MOD_SZABVANYOS,
+    "mod": MOD_EGYEDI,
     "tipus": "EUR-raklap (120 × 80 cm)",
     "hossz": 120.0,
     "szel": 80.0,
@@ -390,44 +390,45 @@ def csoport_urlap(gid: int, sorszam: int) -> tuple[RakomanyCsoport | None, st.de
             )
             szabvany = RAKLAP_TIPUSOK.get(ss[k("tipus", gid)])
 
+        # FuvarDíj 4.0 – kötelező adatbeviteli sorrend.
+        st.number_input("1. Darabszám (db)", min_value=1, max_value=10000, step=1, key=k("darab", gid))
         m1, m2, m3 = st.columns(3)
-        m1.number_input("Hosszúság (cm)", min_value=1.0, max_value=2000.0, step=1.0, format="%.0f", key=k("hossz", gid))
-        m2.number_input("Szélesség (cm)", min_value=1.0, max_value=500.0, step=1.0, format="%.0f", key=k("szel", gid))
-        m3.number_input("Magasság (cm)", min_value=1.0, max_value=500.0, step=1.0, format="%.0f", key=k("mag", gid),
-                        help="Egy rakományegység teljes magassága (raklappal együtt).")
+        m1.number_input("2. Hosszúság (cm)", min_value=1.0, max_value=2000.0, step=1.0, format="%.0f", key=k("hossz", gid))
+        m2.number_input("3. Szélesség (cm)", min_value=1.0, max_value=500.0, step=1.0, format="%.0f", key=k("szel", gid))
+        m3.number_input("4. Magasság (cm)", min_value=1.0, max_value=500.0, step=1.0, format="%.0f", key=k("mag", gid),
+                        help="Egy rakományegység teljes magassága, raklappal együtt.")
 
-        d1, d2 = st.columns(2)
-        d1.number_input("Darabszám", min_value=1, max_value=10000, step=1, key=k("darab", gid))
-        d2.radio("Tömeg megadása", [SULY_EGYSEG, SULY_OSSZES], key=k("suly_mod", gid), horizontal=True)
+        st.markdown("**5. Súly (kg)**")
+        st.radio("Súly megadása", [SULY_EGYSEG, SULY_OSSZES], key=k("suly_mod", gid), horizontal=True)
         darab = int(ss[k("darab", gid)])
         if ss[k("suly_mod", gid)] == SULY_EGYSEG:
-            d2.number_input("Egy egység tömege (kg)", min_value=0.1, max_value=50000.0, step=10.0, format="%.1f",
+            st.number_input("Egy egység súlya (kg)", min_value=0.1, max_value=50000.0, step=10.0, format="%.1f",
                             key=k("suly", gid))
             suly = float(ss[k("suly", gid)])
-            d2.caption(f"Össztömeg: {szam(suly * darab, 0)} kg")
+            st.caption(f"Összsúly: {szam(suly * darab, 0)} kg")
         else:
-            d2.number_input("A csoport teljes tömege (kg)", min_value=0.1, max_value=500000.0, step=50.0,
+            st.number_input("Az összes darab együttes súlya (kg)", min_value=0.1, max_value=500000.0, step=50.0,
                             format="%.1f", key=k("ossz_suly", gid))
             suly = float(ss[k("ossz_suly", gid)]) / darab
-            d2.caption(f"Egységenként: {szam(suly, 1)} kg")
+            st.caption(f"Egységenként: {szam(suly, 1)} kg")
 
-        h1, h2 = st.columns(2)
-        h1.selectbox("Halmozhatóság", list(SZINT_OPCIOK), key=k("szint_opcio", gid))
+        st.selectbox("6. Halmozhatóság", list(SZINT_OPCIOK), key=k("szint_opcio", gid))
         szint = SZINT_OPCIOK[ss[k("szint_opcio", gid)]]
         if szint is None:
-            h1.number_input("Maximális szintszám", min_value=1, max_value=20, step=1, key=k("szint_egyedi", gid))
+            st.number_input("Maximális szintszám", min_value=1, max_value=20, step=1, key=k("szint_egyedi", gid))
             szint = int(ss[k("szint_egyedi", gid)])
-        h2.checkbox("90°-kal elforgatható (alapterületen)", key=k("forgathato", gid))
+
         raterheles = None
-        if szint > 1:
-            h2.checkbox("Halomban eltérő tájolás megengedett", key=k("valtakozo", gid),
-                        help="Felváltva 90°-kal forgatott egységek a halomban. A program kiértékeli, "
-                        "de nem tekinti automatikusan biztonságosnak.")
-            h2.checkbox("Alsó egység felső terhelhetősége ismert", key=k("raterheles_ismert", gid))
-            if ss[k("raterheles_ismert", gid)]:
-                h2.number_input("Megengedett felső terhelés (kg)", min_value=0.0, max_value=100000.0, step=50.0,
-                                format="%.0f", key=k("raterheles", gid))
-                raterheles = float(ss[k("raterheles", gid)])
+        with st.expander("További rakodási beállítások", expanded=False):
+            st.checkbox("90°-kal elforgatható (alapterületen)", key=k("forgathato", gid))
+            if szint > 1:
+                st.checkbox("Halomban eltérő tájolás megengedett", key=k("valtakozo", gid),
+                            help="A program elemzi, de nem tekinti automatikusan biztonságosnak.")
+                st.checkbox("Alsó egység felső terhelhetősége ismert", key=k("raterheles_ismert", gid))
+                if ss[k("raterheles_ismert", gid)]:
+                    st.number_input("Megengedett felső terhelés (kg)", min_value=0.0, max_value=100000.0, step=50.0,
+                                    format="%.0f", key=k("raterheles", gid))
+                    raterheles = float(ss[k("raterheles", gid)])
 
         tipus = ss[k("tipus", gid)] if ss[k("mod", gid)] == MOD_SZABVANYOS else "Egyedi rakomány"
         cs = RakomanyCsoport(
