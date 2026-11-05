@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 from datetime import date, datetime
 
+from visualization_3d import terv_3d
 import pandas as pd
 import streamlit as st
 
@@ -542,6 +543,13 @@ with tab_rakomany:
     # Rakodási terv – teljes szélességben
     if terv and terv.pakolas.elhelyezesek:
         p = terv.pakolas
+        st.markdown("#### Térbeli rakományterv 3D-ben")
+        st.caption("Forgatás: húzd az ábrát az egérrel. Nagyítás: egérgörgő. A nézet a számított elhelyezést mutatja, a halmozási szintekkel együtt.")
+        if st.checkbox("3D nézet megjelenítése", value=True):
+            figure = terv_3d(terv)
+            st.plotly_chart(figure, width="stretch", config={"displaylogo": False})
+            st.download_button("Interaktív 3D terv letöltése (HTML)", figure.to_html(include_plotlyjs=True).encode("utf-8"), "rakomanyterv_3d.html", "text/html")
+        st.caption("A térbeli ábra geometriai terv; nem jelent rakodásbiztonsági jóváhagyást.")
         st.markdown("#### 7 · Rakodási terv (felülnézet, méretarányos)")
         st.caption(
             f"Módszer: {p.modszer} · futásidő {szam(p.futasido_s, 2)} s · alsó korlát {szam(p.also_korlat_cm, 0)} cm. "
