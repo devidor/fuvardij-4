@@ -293,8 +293,8 @@ def pakolo(tetelek, hossz_cm, szelesseg_cm, idokorlat_s):
 st.markdown(
     """
 <div class="app-fejlec">
-  <h1>🚚 Intelligens fuvar- és rakománykalkulátor</h1>
-  <p>Elméleti, fizikai, tömegalapú és elszámolási LDM · optimalizált raklapelrendezés · rakodási terv a fuvarozónak.</p>
+  <h1>🚚 FuvarDíj 4.0 – fejlesztési változat</h1>
+  <p>4.0-dev · Rakományadatok új sorrendben · geometriai elhelyezés ellenőrzéssel · automatikus tesztek</p>
 </div>
 """,
     unsafe_allow_html=True,
