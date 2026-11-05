@@ -273,7 +273,10 @@ def _legjobb_heurisztika(tipusok: list[_Tipus], W: int) -> list[_Teglalap]:
 def _also_korlat(tipusok: list[_Tipus], W: int) -> int:
     egysegek = _kiterjesztett(tipusok)
     y_opciok = [tuple({dy for _, dy, _ in tipusok[i].iranyok(W)}) for i in egysegek]
-    w_eff = max(_mintaosszegek(y_opciok, W))
+    # Nagy darabszám esetén a részhalmazösszeg-keresés túl drága lenne.
+    # Ilyenkor a teljes rakodótér-szélesség konzervatív, de bizonyosan
+    # érvényes alsó korlátot ad; nem szabad bizonyított optimumnak nevezni.
+    w_eff = max(_mintaosszegek(y_opciok, W)) if len(egysegek) <= 80 else W
     terulet = sum(tipusok[i].l * tipusok[i].w for i in egysegek)
     korlat = math.ceil(terulet / w_eff)
     # Minden egységnek el kell férnie hosszában.
@@ -450,6 +453,15 @@ def optimalizal(
     meghaladja a rakodótér hosszát (``belefer`` hamis).
     """
     kezdet = time.perf_counter()
+    if not all(math.isfinite(v) and v > 0 for v in (rakter_hossz_cm, rakter_szelesseg_cm)):
+        raise ValueError("A rakodótér méretei véges, pozitív számok legyenek.")
+    if _mm(rakter_hossz_cm) < 1 or _mm(rakter_szelesseg_cm) < 1:
+        raise ValueError("A rakodótér méretei legalább 1 mm-esek legyenek.")
+    for t in tetelek:
+        if not all(math.isfinite(v) and v > 0 and _mm(v) >= 1 for v in (t.hossz_cm, t.szelesseg_cm)):
+            raise ValueError("A rakomány méretei pozitív, véges, legalább 1 mm-es értékek legyenek.")
+        if not isinstance(t.darab, int) or t.darab < 0 or t.darab > 10000:
+            raise ValueError("A darabszám 0 és 10000 közötti egész szám legyen.")
     W = _mm(rakter_szelesseg_cm)
     tipusok = [
         _Tipus(t.csoport, _mm(t.hossz_cm), _mm(t.szelesseg_cm), t.forgathato, int(t.darab))
