@@ -22,7 +22,7 @@ from pricing import DijEredmeny, DijParameterek, szamol_dij
 from trailer_config import (
     ALAP_TEHERBIRAS_KG, ALAP_TIPUS, EGYEDI_TIPUS, POTKOCSI_TIPUSOK, Potkocsi, validal_potkocsi,
 )
-from visualization import rakodasi_svg, szin
+from visualization import rakodasi_svg
 
 st.set_page_config(
     page_title="FuvarDíj 4.0 – fejlesztési változat",
@@ -544,29 +544,23 @@ with tab_rakomany:
     if terv and terv.pakolas.elhelyezesek:
         p = terv.pakolas
         st.markdown("#### Térbeli rakományterv 3D-ben")
-        st.caption("Forgatás: húzd az ábrát az egérrel. Nagyítás: egérgörgő. A nézet a számított elhelyezést mutatja, a halmozási szintekkel együtt.")
-        if st.checkbox("3D nézet megjelenítése", value=True):
-            figure = terv_3d(terv)
-            st.plotly_chart(figure, width="stretch", config={"displaylogo": False})
-            st.download_button("Interaktív 3D terv letöltése (HTML)", figure.to_html(include_plotlyjs=True).encode("utf-8"), "rakomanyterv_3d.html", "text/html")
-        st.caption("A térbeli ábra geometriai terv; nem jelent rakodásbiztonsági jóváhagyást.")
-        st.markdown("#### 7 · Rakodási terv (felülnézet, méretarányos)")
+        nezet = st.radio("3D nézet", ["Teljes pótkocsi", "Rakott szakasz közelről"], horizontal=True)
+        csak_sav = nezet == "Rakott szakasz közelről"
         st.caption(
-            f"Módszer: {p.modszer} · futásidő {szam(p.futasido_s, 2)} s · alsó korlát {szam(p.also_korlat_cm, 0)} cm. "
-            "x: távolság a homlokfaltól, y: a bal oldalfaltól. Zöld szaggatott keret: felhasznált rakodósáv; "
-            "narancs sraffozás: szabad terület a sávon belül; „×2”: egymásra helyezett egységek."
+            f"Felhasznált rakodási hossz: {szam(p.hasznalt_hossz_cm, 1)} cm · "
+            f"Használható raktérhossz: {szam(pk.rakter_hossz_cm, 1)} cm. "
+            "Az ábrát húzással forgathatod, a nagyításhoz használd a görgőt vagy az ábra eszköztárát."
         )
-        st.markdown(f'<div class="abra-keret">{rakodasi_svg(p, pk, terv.halmok, azonosito="teljes")}</div>',
-                    unsafe_allow_html=True)
-        st.markdown(f'<div class="abra-keret">{rakodasi_svg(p, pk, terv.halmok, csak_sav=True, azonosito="sav")}</div>',
-                    unsafe_allow_html=True)
-        st.markdown(
-            '<div class="jelmagyarazat">'
-            + "".join(f'<span><i style="background:{szin(c.index)}"></i>{html.escape(c.csoport.nev)}</span>'
-                      for c in terv.csoportok if c.berakhato)
-            + '<span><i style="background:#FFE0B2;border:1px solid #F57C00"></i>szabad terület</span></div>',
-            unsafe_allow_html=True,
+        figure = terv_3d(terv, csak_sav=csak_sav)
+        st.plotly_chart(figure, width="stretch", key=f"cargo_3d_{csak_sav}", config={"displaylogo": False, "scrollZoom": True})
+        fajlnev = "rakott_szakasz_3d.html" if csak_sav else "teljes_potkocsi_3d.html"
+        st.download_button("Kiválasztott 3D nézet letöltése (HTML)", figure.to_html(include_plotlyjs=True, config={"scrollZoom": True}).encode("utf-8"), fajlnev, "text/html")
+        st.caption(
+            f"Módszer: {p.modszer} · futásidő {szam(p.futasido_s, 2)} s · "
+            f"alsó korlát {szam(p.also_korlat_cm, 0)} cm."
         )
+        with st.expander("Felülnézet (2D)"):
+            st.markdown(rakodasi_svg(p, pk, terv.halmok, csak_sav=csak_sav), unsafe_allow_html=True)
         geo_hibak = ellenoriz_elhelyezest(p.elhelyezesek, max(p.hasznalt_hossz_cm, 0.0), pk.rakter_szelesseg_cm)
         uzenetek_megjelenitese(
             [Uzenet("hiba", h) for h in geo_hibak] if geo_hibak
