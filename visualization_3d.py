@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from visualization import szin
 
 
-def terv_3d(terv):
+def terv_3d(terv, *, csak_sav=False):
     fig = go.Figure()
     groups = {c.index: c.csoport for c in terv.csoportok}
     # Combine boxes per group into a single mesh, avoiding thousands of traces.
@@ -25,11 +25,27 @@ def terv_3d(terv):
         fig.add_trace(go.Mesh3d(**data,color=szin(group),name=groups[group].nev,showlegend=True,flatshading=True,hovertemplate='%{text}<extra></extra>',lighting=dict(ambient=.65,diffuse=.8)))
     pk=terv.potkocsi
     L,W,H=pk.rakter_hossz_cm,pk.rakter_szelesseg_cm,pk.rakter_magassag_cm
+    if csak_sav:
+        L = terv.pakolas.hasznalt_hossz_cm
     corners=[(0,0,0),(L,0,0),(L,W,0),(0,W,0),(0,0,H),(L,0,H),(L,W,H),(0,W,H)]
     xs,ys,zs=[],[],[]
     for a,b in [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7)]:
         for c in (corners[a],corners[b],(None,None,None)):
             xs.append(c[0]);ys.append(c[1]);zs.append(c[2])
-    fig.add_trace(go.Scatter3d(x=xs,y=ys,z=zs,mode='lines',line=dict(color='#365778',width=3),name='Használható raktér',hoverinfo='skip'))
-    fig.update_layout(height=620,margin=dict(l=0,r=0,t=20,b=0),legend=dict(orientation='h'),scene=dict(aspectmode='data',xaxis_title='Hosszúság (cm)',yaxis_title='Szélesség (cm)',zaxis_title='Magasság (cm)',camera=dict(eye=dict(x=1.4,y=1.8,z=1.1))),uirevision='cargo-3d')
+    fig.add_trace(go.Scatter3d(x=xs,y=ys,z=zs,mode='lines',line=dict(color='#365778',width=3),name='Rakott szakasz' if csak_sav else 'Használható raktér',hoverinfo='skip'))
+    # Mark free floor patches within the loaded length in both views.
+    free_x, free_y, free_z = [], [], []
+    for area in terv.pakolas.szabad_teruletek:
+        x, y = area.x_cm, area.y_cm
+        end_x, end_y = x + area.hossz_cm, y + area.szelesseg_cm
+        free_x.extend([x, end_x, end_x, x, x, None])
+        free_y.extend([y, y, end_y, end_y, y, None])
+        free_z.extend([0, 0, 0, 0, 0, None])
+    if free_x:
+        fig.add_trace(go.Scatter3d(
+            x=free_x, y=free_y, z=free_z, mode="lines",
+            line=dict(color="#E58A25", width=4),
+            name="Szabad padlófelület a rakott szakaszon", hoverinfo="skip",
+        ))
+    fig.update_layout(height=620,margin=dict(l=0,r=0,t=20,b=0),legend=dict(orientation='h'),scene=dict(aspectmode='data',xaxis_title='Hosszúság (cm)',yaxis_title='Szélesség (cm)',zaxis_title='Magasság (cm)',camera=dict(eye=dict(x=1.4,y=1.8,z=1.1))),uirevision='cargo-detail' if csak_sav else 'cargo-full')
     return fig
